@@ -182,15 +182,22 @@ body {
 </head>
 <body>
 
+
+
 <div class="tab-container">
     <div class="tab-buttons">
         <button class="tab-button active" onclick="openTab('tab1')">掲示板</button>
-        <button class="tab-button" onclick="openTab('tab2')">画像共有アプリ</button>
+
+<button class="tab-button" onclick="openTab('tab2')">画像共有</button>
     </div>
+
 
     <div id="tab1-content" class="tab-content active">
         <input type="text" style="display:none">
         <input type="password" style="display:none">
+
+<h1>iPhoneだけで作った掲示板</h1>
+
         
         <div id="authArea">
           <h2>ログイン / 新規登録</h2>
@@ -218,8 +225,13 @@ body {
         </div>
         
         <div id="mainArea" style="display:none;">
+
+
         
           <div class="header-actions">
+
+
+
             <button id="newThreadBtn" class="btn-thread">新しいスレッドを立てる</button>
             <button id="logoutBtn">ログアウト</button>
           </div>
@@ -868,3 +880,5 @@ overlay2.addEventListener("click", ()=>{ overlay2.style.display="none"; overlayI
 </script>
 </body>
 </html>
+
+
