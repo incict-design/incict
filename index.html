@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>コード統合: タブ切り替え</title>
+<style>
+/* 共通スタイル */
+body {
+    font-family: -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
+    margin: 0;
+    padding: 0;
+    background: #f0f0f0;
+}
+
+/* タブコンテナ */
+.tab-container {
+    max-width: 900px; /* 2つ目のコードに合わせる */
+    margin: 20px auto;
+    padding: 20px;
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+/* タブボタン */
+.tab-buttons {
+    display: flex;
+    border-bottom: 2px solid #ccc;
+    margin-bottom: 20px;
+}
+.tab-button {
+    padding: 10px 15px;
+    cursor: pointer;
+    background-color: #eee;
+    border: 1px solid #ccc;
+    border-bottom: none;
+    border-radius: 8px 8px 0 0;
+    margin-right: 5px;
+    font-size: 16px;
+    font-weight: bold;
+    transition: background-color 0.2s;
+}
+.tab-button.active {
+    background-color: #0366d6;
+    color: white;
+    border-color: #0366d6;
+    border-bottom: 2px solid #0366d6;
+    z-index: 1; /* アクティブなタブを前面に */
+}
+
+/* タブ内容 */
+.tab-content {
+    display: none;
+    /* 1つ目のコードのmax-width: 750px; padding: 20px; を継承するために、個別のスタイルを適用 */
+    max-width: 900px;
+    margin: 0 auto; 
+    padding: 0; /* body padding は各コンテンツで設定 */
+}
+.tab-content.active {
+    display: block;
+}
+
+/* 最初のコードのbodyスタイルを上書きしないように調整 */
+#tab1-content {
+    /* 最初のコードのbodyスタイルをこのdivに適用 */
+    background: #f0f0f0;
+    visibility: visible !important; /* タブ表示時は強制的に表示 */
+    padding: 20px; /* 最初のコードのbody padding */
+    max-width: 750px;
+}
+#tab1-content .tab-container { 
+    background: none; 
+    box-shadow: none; 
+    margin: 0; 
+    padding: 0;
+}
+#tab1-content .tab-content { 
+    padding: 0; 
+}
+
+
+/* --- 2つ目のコード (画像共有アプリ) のスタイル --- */
+#tab2-content {
+    background: #f0f0f0;
+    padding: 20px;
+    max-width: 900px;
+}
+#tab2-content header{ display:flex; align-items:center; gap:12px; margin-bottom:8px;}
+#tab2-content #img-gallery {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    grid-auto-rows: 200px;
+    gap: 10px;
+    justify-items: center;
+    margin-top: 10px;
+}
+@media (max-width: 480px) { #tab2-content #img-gallery { grid-template-columns: repeat(2, 1fr); } }
+#tab2-content .card {
+    width: 110px;
+    height: 150px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 4px;
+    background: white;
+    cursor: pointer;
+    display:flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: center;
+    position:relative;
+}
+#tab2-content .card img {
+    width: 100%;
+    height: 100px;
+    object-fit: cover;
+    border-radius: 6px;
+    transition: transform 0.3s;
+}
+#tab2-content .card img:hover{ transform: scale(1.05);}
+#tab2-content .meta{ font-size:12px; color:#555; margin-top:4px; text-align:center; white-space:pre-line;}
+#tab2-content #img-status{ font-size:13px; color:#333; margin-top:4px; }
+#tab2-content button{ cursor:pointer; padding:4px 10px; border-radius:6px; border:1px solid #bbb; background:#f7f7f7;}
+#tab2-content #img-overlay{ position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); display:none; justify-content:center; align-items:center; z-index:1000;}
+#tab2-content #img-overlay img{ max-width:90%; max-height:90%; border-radius:8px; cursor:pointer;}
+#tab2-content .auth input{ margin-bottom:4px; display:block; padding:4px 6px; width:180px; } /* 横幅狭く */
+#tab2-content .auth-row{ display:flex; gap:10px; align-items:flex-end; margin-bottom:4px; }
+#tab2-content .auth-row label{ font-size:12px; }
+#tab2-content .upload-row{ display:flex; gap:6px; align-items:center; margin-top:4px; }
+#tab2-content .upload-row button, #tab2-content .upload-row input{ height:28px; } 
+#tab2-content #img-fileInput{ display:none; }
+
+/* アカウントヘッダー */
+#tab2-content .auth-header {
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin-bottom:6px;
+}
+#tab2-content .auth-header h3{ margin:0; }
+#tab2-content #img-authStatus{ font-size:14px; color:#333; }
+</style>
+
+<style>
+/* 掲示板独自のスタイル (1つ目のコードから移動) */
+/* 最初のコードのスタイルを維持するためのCSS */
+#tab1-content h1 { font-size: 24px; text-align: center; margin-bottom: 20px; }
+#tab1-content label { font-weight: bold; display: block; margin-top: 12px; }
+#tab1-content input, #tab1-content textarea { width: 100%; padding: 10px; margin-top: 6px; border-radius: 6px; border: 1px solid #ccc; box-sizing: border-box; font-size: 16px; }
+#tab1-content button { padding: 10px 20px; margin-top: 12px; border: none; border-radius: 6px; background-color: #4CAF50; color: white; font-size: 16px; cursor: pointer; }
+#tab1-content button:hover { background-color: #45a049; }
+#tab1-content h2 { margin-top: 30px; font-size: 20px; }
+#tab1-content .btn-sm { font-size: 12px; padding: 4px 8px; margin-right: 6px; background: #555; border-radius: 4px; color: #fff; }
+#tab1-content .btn-del { background: #d9534f; }
+#tab1-content #authArea { background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.05); }
+#tab1-content .header-actions {  
+  display: flex;  
+  justify-content: space-between;  
+  align-items: center;
+  margin-bottom: 20px;  
+  margin-top: 20px;
+} 
+#tab1-content #logoutBtn {
+  background: #777;
+  margin-top: 0;
+}
+#tab1-content #threadListContainer { margin-top: 20px; }
+#tab1-content .thread-item { background: #fff; border-radius: 8px; padding: 15px; margin-bottom: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); cursor: pointer; border-left: 5px solid #0366d6; }
+#tab1-content .thread-item:hover { background: #f9f9f9; }
+#tab1-content .thread-item h3 { font-size: 18px; margin: 0 0 5px 0; color: #333; }
+#tab1-content .thread-meta { color: #777; font-size: 13px; }
+#tab1-content .btn-thread { background: #0366d6; margin-left: 10px; margin-top: 0; }
+#tab1-content #replies { margin-top: 12px; }
+#tab1-content .reply { background: #fff; border-radius: 8px; padding: 12px; margin-bottom: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+#tab1-content .reply .name { font-weight: bold; margin-bottom: 4px; }
+#tab1-content .reply .time { color: #777; font-size: 12px; margin-bottom: 6px; }
+#tab1-content .reply .content { white-space: pre-wrap; }
+#tab1-content #postReplyArea { background: #fff; padding: 15px; border-radius: 8px; margin-top: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+#tab1-content #threadFormContainer { background: #e6f7ff; padding: 15px; border-radius: 8px; margin-top: 15px; }
+#tab1-content #message, #tab1-content #postMessage, #tab1-content #threadMessage { margin-top: 12px; font-size: 14px; min-height: 18px; }
+</style>
+</head>
+<body>
+
+<div class="tab-container">
+    <div class="tab-buttons">
+        <button class="tab-button active" onclick="openTab('tab1')">掲示板</button>
+        <button class="tab-button" onclick="openTab('tab2')">画像共有アプリ</button>
+    </div>
+
+    <div id="tab1-content" class="tab-content active">
+        <input type="text" style="display:none">
+        <input type="password" style="display:none">
+        
+        <div id="authArea">
+          <h2>ログイン / 新規登録</h2>
+          <form autocomplete="off">
+            <label>表示名 (新規登録時のみ入力)</label>
+            <input id="displayName" type="text" placeholder="名前 (必須)">
+            
+          
+          <h4>表示名はログイン時の入力は不要です</h4>
+          
+            
+            <label>メールアドレス</label>
+            <input id="email" type="email" placeholder="メールアドレス" autocomplete="off">
+            <label>パスワード</label>
+            <input id="password" type="password" placeholder="パスワード" autocomplete="new-password">
+          </form>
+          <button id="loginBtn">ログイン</button>
+          <button id="registerBtn">新規登録（確認メール送信）</button>
+          
+          
+          <h3>迷惑メールフォルダも要確認</h3>
+          
+          <button id="resetBtn" style="background:#888;">パスワード再設定</button>
+          <div id="message" style="color:red;"></div>
+        </div>
+        
+        <div id="mainArea" style="display:none;">
+        
+          <div class="header-actions">
+            <button id="newThreadBtn" class="btn-thread">新しいスレッドを立てる</button>
+            <button id="logoutBtn">ログアウト</button>
+          </div>
+          <div id="threadMessage" style="color:red;"></div>
+        
+          <div id="threadFormContainer" style="display:none;">
+            <h2>スレッド作成</h2>
+            <label>スレッドタイトル</label>
+            <input id="threadTitle" type="text" placeholder="スレッドタイトル（必須）">
+            
+            <label>最初の投稿者名 (登録名が自動設定されます)</label>
+            <input id="name" type="text" disabled placeholder="お名前">
+            
+            <label>最初の投稿内容</label>
+            <textarea id="firstPostText" rows="4" placeholder="最初の書き込み内容"></textarea>
+            <button id="createThreadBtn">スレッドを作成</button>
+          </div>
+        
+          <div id="threadListContainer">
+            <h2>スレッド一覧</h2>
+            <div id="threads">読み込み中...</div>
+          </div>
+        
+          <div id="threadView" style="display:none;">
+            <h2 id="currentThreadTitle"></h2>
+            <button id="backToThreadsBtn" style="background:#555;">← スレッド一覧に戻る</button>
+        
+            <div id="replies"></div>
+        
+            <div id="postReplyArea">
+              <label>本文</label>
+              <textarea id="replyText" rows="4" placeholder="レスポンス内容"></textarea>
+              <button id="postReplyBtn">投稿する</button>
+              <div id="postMessage" style="color:red;"></div>
+            </div>
+          </div>
+        
+        </div>
+    </div>
+
+    <div id="tab2-content" class="tab-content">
+        <header>
+          <h1>Image-Share</h1>
+        </header>
+        
+        <section>
+          <div id="img-gallery"></div>
+          <div class="upload-row">
+            <button id="img-selectBtn">ファイルを選択</button>
+            <button id="img-uploadBtn">アップロード</button>
+            <input id="img-fileInput" type="file" accept="image/*">
+          </div>
+          <div id="img-status"></div>
+        </section>
+        
+        <section class="auth">
+          <div class="auth-header">
+            <h3>アカウント</h3>
+            <div id="img-authStatus">未ログイン</div>
+          </div>
+        
+          <div class="auth-row">
+            <input id="img-email" type="email" placeholder="メールアドレス">
+            <input id="img-password" type="password" placeholder="パスワード：6桁以上">
+          </div>
+        
+          <div class="auth-row">
+            <button id="img-registerBtn">新規登録</button>
+            <button id="img-loginBtn">ログイン</button>
+            <button id="img-logoutBtn" style="display:none;">ログアウト</button>
+          </div>
+        
+          <label>投稿者名（表示用 / 新規登録時のみ入力）<br>
+            <input id="img-displayName" type="text" placeholder="新規登録時のみ入力">
+          </label>
+        </section>
+        
+        <div id="img-overlay">
+          <img id="img-overlayImg" src="">
+        </div>
+    </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
+
+<script>
+// --- タブ切り替え機能 ---
+function openTab(tabName) {
+    // ボタンのactiveクラスをリセット
+    const buttons = document.getElementsByClassName('tab-button');
+    for (let i = 0; i < buttons.length; i++) {
+        buttons[i].classList.remove('active');
+    }
+
+    // コンテンツのactiveクラスをリセット（すべて非表示）
+    const contents = document.getElementsByClassName('tab-content');
+    for (let i = 0; i < contents.length; i++) {
+        contents[i].classList.remove('active');
+        contents[i].style.display = 'none'; // display: none も設定
+    }
+
+    // 選択されたタブのボタンとコンテンツを表示
+    document.querySelector(`button[onclick="openTab('${tabName}')"]`).classList.add('active');
+    document.getElementById(`${tabName}-content`).classList.add('active');
+    document.getElementById(`${tabName}-content`).style.display = 'block';
+
+    // 認証チェック完了後、最初のコードが非表示のままになるのを防ぐための再表示ロジック
+    if (tabName === 'tab1' && window.authChecked) {
+        document.getElementById('tab1-content').style.visibility = "visible";
+    }
+}
+
+// ページロード時に最初のタブを開く
+window.onload = () => {
+    openTab('tab1');
+};
+
+
+// ------------------------------------------------------------------------------------------------
+// --- 1つ目のコードのJavaScript ---
+// ------------------------------------------------------------------------------------------------
+
+// Firebase 初期化 (1つ目のプロジェクト)
+const firebaseConfig1 = {
+  apiKey: "AIzaSyCt3LK6d44bmnCOodXvvYzfMqTXQlUUhRM",
+  authDomain: "kuni-d813a.firebaseapp.com",
+  databaseURL: "https://kuni-d813a-default-rtdb.firebaseio.com",
+  projectId: "kuni-d813a",
+  storageBucket: "kuni-d813a.appspot.com",
+  messagingSenderId: "237500926583",
+  appId: "1:237500926583:web:55c13cc28ef4547d019472"
+};
+
+// 1つ目のFirebaseアプリの初期化
+const firebaseApp1 = firebase.initializeApp(firebaseConfig1, "App1");
+const auth = firebaseApp1.auth();
+const db = firebaseApp1.firestore();
+const threadsRef = db.collection("threads");
+
+// UIエレメント (IDの衝突がないもの)
+const displayNameInput = document.getElementById("displayName"); 
+const emailInput = document.getElementById("email");
+const passwordInput = document.getElementById("password");
+const messageDiv = document.getElementById("message");
+const postMessageDiv = document.getElementById("postMessage");
+const threadMessageDiv = document.getElementById("threadMessage");
+const threadListContainer = document.getElementById("threadListContainer");
+const threadFormContainer = document.getElementById("threadFormContainer");
+const threadView = document.getElementById("threadView");
+const threadsDiv = document.getElementById("threads");
+const repliesDiv = document.getElementById("replies");
+const currentThreadTitle = document.getElementById("currentThreadTitle");
+
+// 状態管理
+window.currentThreadId = null;
+window.repliesUnsubscribe = null; 
+window.authChecked = false; 
+
+function showMessage(div, text, color = "red") { div.style.color = color; div.textContent = text; }
+
+// --- 認証系 ---
+document.getElementById("registerBtn").onclick = async () => {
+  const name = displayNameInput.value.trim(); 
+  const email = emailInput.value.trim();
+  const password = passwordInput.value;
+  showMessage(messageDiv, "");
+  
+  if(!name || !email || !password){ showMessage(messageDiv,"名前、メール、パスワードをすべて入力してください"); return; } 
+  
+  try{
+    const userCredential = await auth.createUserWithEmailAndPassword(email,password);
+    const user = userCredential.user;
+    
+    await user.updateProfile({ displayName: name });
+    
+    await user.sendEmailVerification();
+    
+    displayNameInput.value = "";
+    emailInput.value = "";
+    passwordInput.value = "";
+    
+    await auth.signOut();
+    
+    showMessage(messageDiv,"新規登録完了。確認メールを送信しました。","green");
+    
+  }catch(e){ showMessage(messageDiv,"登録失敗: "+e.message); }
+};
+
+document.getElementById("loginBtn").onclick = async () => {
+  const email = emailInput.value.trim();
+  const password = passwordInput.value;
+  showMessage(messageDiv, "");
+  if(!email||!password){ showMessage(messageDiv,"メールとパスワードを入力してください"); return; }
+  
+  try{ 
+    await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+    await auth.signInWithEmailAndPassword(email,password);
+    
+  } catch(e) { 
+    console.error("永続性 LOCAL 設定エラー:", e.code, e.message);
+    
+    if (e.code === 'auth/unsupported-persistence-type' || e.message.includes('auth/unsupported-persistence-type') || e.message.includes('auth.getPersistence is not a function')) {
+      try {
+        await auth.setPersistence(firebase.auth.Auth.Persistence.NONE);
+        await auth.signInWithEmailAndPassword(email,password);
+        showMessage(messageDiv,"ログイン成功。ただし、環境制限のためリロードするとログアウトします。","orange");
+      } catch (retryError) {
+        showMessage(messageDiv,"ログイン失敗: "+retryError.message); 
+      }
+    } else {
+      showMessage(messageDiv,"ログイン失敗: "+e.message); 
+    }
+  }
+};
+
+document.getElementById("resetBtn").onclick = async () => {
+  const email = emailInput.value.trim();
+  showMessage(messageDiv, "");
+  if(!email){ showMessage(messageDiv,"メールアドレスを入力してください"); return; }
+  try{ await auth.sendPasswordResetEmail(email); showMessage(messageDiv,"リセットメール送信済み","green"); } 
+  catch(e){ showMessage(messageDiv,"送信失敗: "+e.message); }
+};
+
+document.getElementById("logoutBtn").onclick = () => auth.signOut();
+
+// 認証状態変化
+auth.onAuthStateChanged(user => {
+  const mainArea = document.getElementById("mainArea");
+  const authArea = document.getElementById("authArea");
+  
+  if(user && user.emailVerified){
+    authArea.style.display = "none";
+    mainArea.style.display = "block";
+    
+    document.getElementById("name").value = user.displayName || "匿名";
+    
+    renderThreads(); 
+  } else {
+    authArea.style.display = "block";
+    mainArea.style.display = "none";
+    if (window.repliesUnsubscribe) window.repliesUnsubscribe();
+    closeThreadView();
+  }
+  
+  if (!window.authChecked) {
+    document.getElementById('tab1-content').style.visibility = "visible";
+    window.authChecked = true;
+  }
+});
+
+// --- スレッド一覧描画 ---
+function renderThreads() {
+  threadsRef.orderBy("timestamp", "desc").onSnapshot(snapshot => {
+    threadsDiv.innerHTML = "";
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      const id = doc.id;
+      const time = data.timestamp ? data.timestamp.toDate().toLocaleString("ja-JP") : "…";
+      const div = document.createElement("div");
+      div.className = "thread-item";
+      div.dataset.id = id;
+      div.innerHTML = `
+        <h3>${data.title}</h3>
+        <div class="thread-meta">スレ主: ${data.name || "匿名"} | 最初の投稿: ${time}</div>
+      `;
+      div.onclick = () => openThread(id, data.title);
+      threadsDiv.appendChild(div);
+    });
+  });
+}
+
+// --- スレッド作成フォーム表示切り替え ---
+document.getElementById("newThreadBtn").onclick = () => {
+  threadFormContainer.style.display = threadFormContainer.style.display === "none" ? "block" : "none";
+  showMessage(threadMessageDiv, "");
+};
+
+// --- スレッド作成 ---
+document.getElementById("createThreadBtn").onclick = async () => {
+  const title = document.getElementById("threadTitle").value.trim();
+  const user = auth.currentUser;
+  const name = user.displayName || "匿名"; 
+  const firstPostText = document.getElementById("firstPostText").value.trim();
+  
+  showMessage(threadMessageDiv, "");
+
+  if (!user || !user.emailVerified) { showMessage(threadMessageDiv, "ログインしてメール認証を完了してください"); return; }
+  if (!title || !firstPostText) { showMessage(threadMessageDiv, "タイトルと本文を入力してください"); return; }
+
+  try {
+    const newThreadRef = await threadsRef.add({
+      title,
+      name,
+      uid: user.uid,
+      timestamp: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    
+    await newThreadRef.collection("replies").add({
+      name,
+      text: firstPostText,
+      uid: user.uid,
+      timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+      isOP: true 
+    });
+
+    document.getElementById("threadTitle").value = "";
+    document.getElementById("firstPostText").value = "";
+    threadFormContainer.style.display = "none";
+    
+  } catch (e) { showMessage(threadMessageDiv, "スレッド作成失敗: " + e.message); }
+};
+
+// --- スレッドを開く ---
+function openThread(threadId, title) {
+  window.currentThreadId = threadId;
+  currentThreadTitle.textContent = title;
+  
+  threadListContainer.style.display = "none";
+  threadFormContainer.style.display = "none"; 
+  threadView.style.display = "block";
+  
+  renderReplies(threadId);
+}
+
+// --- スレッド詳細から一覧に戻る ---
+document.getElementById("backToThreadsBtn").onclick = () => {
+  closeThreadView();
+};
+
+function closeThreadView() {
+  if (window.repliesUnsubscribe) window.repliesUnsubscribe();
+  window.currentThreadId = null;
+  threadView.style.display = "none";
+  threadListContainer.style.display = "block";
+  repliesDiv.innerHTML = "";
+  document.getElementById("replyText").value = "";
+}
+
+// --- レスポンス一覧描画 ---
+function renderReplies(threadId) {
+  if (window.repliesUnsubscribe) window.repliesUnsubscribe();
+  
+  const repliesRef = threadsRef.doc(threadId).collection("replies");
+  
+  window.repliesUnsubscribe = repliesRef.orderBy("timestamp", "asc").onSnapshot(snapshot => {
+    repliesDiv.innerHTML = "";
+    const user = auth.currentUser;
+    let replyCount = 1;
+    
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      const id = doc.id;
+      const time = data.timestamp ? data.timestamp.toDate().toLocaleString("ja-JP") : "…";
+      const div = document.createElement("div");
+      div.className = "reply";
+      div.dataset.id = id;
+      
+      const name = data.isOP ? `<span style="color:#007bff; font-weight:bold;">${data.name} (スレ主)</span>` : data.name;
+
+      div.innerHTML = `
+        <div class="name">${replyCount++}: ${name}</div>
+        <div class="time">${time}</div>
+        <div class="content">${escapeHtml(data.text)}</div>
+      `;
+      
+      if (user && user.uid === data.uid) {
+        const editBtn = document.createElement("button");
+        editBtn.textContent = "編集";
+        editBtn.className = "btn-sm";
+        editBtn.onclick = () => startEditReply(threadId, id);
+        
+        const delBtn = document.createElement("button");
+        delBtn.textContent = "削除";
+        delBtn.className = "btn-sm btn-del";
+        delBtn.onclick = () => startDeleteReply(threadId, id);
+        
+        div.appendChild(editBtn);
+        div.appendChild(delBtn);
+      }
+      repliesDiv.appendChild(div);
+    });
+  }, error => {
+    console.error("レスポンスの取得エラー:", error);
+  });
+}
+
+// --- レスポンス投稿 ---
+document.getElementById("postReplyBtn").onclick = async () => {
+  const user = auth.currentUser;
+  const name = user.displayName || "匿名"; 
+  const text = document.getElementById("replyText").value.trim();
+  
+  showMessage(postMessageDiv, "");
+
+  if (!user || !user.emailVerified) { showMessage(postMessageDiv, "ログインしてメール認証を完了してください"); return; }
+  if (!text) { showMessage(postMessageDiv, "本文を入力してください"); return; }
+  if (!window.currentThreadId) { showMessage(postMessageDiv, "スレッドが選択されていません"); return; }
+  
+  try {
+    const repliesRef = threadsRef.doc(window.currentThreadId).collection("replies");
+    await repliesRef.add({
+      name,
+      text,
+      uid: user.uid,
+      timestamp: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    document.getElementById("replyText").value = "";
+  } catch (e) { showMessage(postMessageDiv, "投稿失敗: " + e.message); }
+};
+
+// --- レスポンス編集 ---
+function startEditReply(threadId, replyId) {
+  const replyDiv = document.querySelector(`#tab1-content .reply[data-id='${replyId}']`);
+  const contentDiv = replyDiv.querySelector('.content');
+  const oldText = contentDiv.textContent;
+  
+  if (replyDiv.querySelector('textarea')) return; 
+
+  const textarea = document.createElement('textarea');
+  textarea.value = oldText;
+  textarea.style.width = '100%';
+  textarea.style.marginTop = '6px';
+  contentDiv.replaceWith(textarea);
+
+  const saveBtn = document.createElement('button');
+  saveBtn.textContent = "保存";
+  saveBtn.className = "btn-sm";
+  
+  const cancelBtn = document.createElement('button');
+  cancelBtn.textContent = "キャンセル";
+  cancelBtn.className = "btn-sm";
+  cancelBtn.style.background = "#ccc";
+
+  const buttonContainer = document.createElement('div');
+  buttonContainer.style.marginTop = '6px';
+  buttonContainer.appendChild(saveBtn);
+  buttonContainer.appendChild(cancelBtn);
+  textarea.after(buttonContainer);
+
+  saveBtn.onclick = async () => {
+    const newText = textarea.value.trim();
+    if (!newText) { alert("本文を入力してください。"); return; }
+    try { 
+      await threadsRef.doc(threadId).collection("replies").doc(replyId).update({ text: newText }); 
+    } catch (e) { console.error("編集エラー: " + e.message); }
+  };
+  
+  cancelBtn.onclick = () => {
+    buttonContainer.remove();
+    const newContentDiv = document.createElement('div');
+    newContentDiv.className = 'content';
+    newContentDiv.innerHTML = escapeHtml(oldText);
+    textarea.replaceWith(newContentDiv);
+  };
+}
+
+// --- レスポンス削除 ---
+function startDeleteReply(threadId, replyId) {
+  const replyDiv = document.querySelector(`#tab1-content .reply[data-id='${replyId}']`);
+  if(replyDiv.querySelector('.confirm-box')) return;
+  
+  const confirmDiv = document.createElement('div');
+  confirmDiv.className = 'confirm-box';
+  confirmDiv.innerHTML = `
+    <div style="margin-top:6px;">本当に削除しますか？</div>
+    <div style="margin-top:6px;">
+      <button class="btn-sm" style="background:#f0ad4e;">はい</button>
+      <button class="btn-sm" style="background:#ccc;">キャンセル</button>
+    </div>
+  `;
+  replyDiv.appendChild(confirmDiv);
+  
+  const [yesBtn, noBtn] = confirmDiv.querySelectorAll('button');
+  
+  yesBtn.onclick = async () => {
+    try { 
+      await threadsRef.doc(threadId).collection("replies").doc(replyId).delete(); 
+    } 
+    catch(e){ console.error("削除エラー: "+e.message); }
+    confirmDiv.remove();
+  };
+  
+  noBtn.onclick = () => confirmDiv.remove();
+}
+
+// HTMLエスケープ関数
+function escapeHtml(str) {
+  if (typeof str !== 'string') return str;
+  return str.replace(/[&<>"']/g, function(match) {
+    const replacements = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+    return replacements[match];
+  }).replaceAll('\n', '<br>');
+}
+
+
+// ------------------------------------------------------------------------------------------------
+// --- 2つ目のコードのJavaScript ---
+// ------------------------------------------------------------------------------------------------
+
+// Firebase初期化 (2つ目のプロジェクト)
+const firebaseConfig2 = {
+  apiKey: "AIzaSyDYMt_zTbQZ5TffPH88wWnpYNTfTzklqGs",
+  authDomain: "image-fda5a.firebaseapp.com",
+  projectId: "image-fda5a",
+  storageBucket: "image-fda5a.firebasestorage.app",
+  messagingSenderId: "755012980730",
+  appId: "1:755012980730:web:39f15384f84588feba5e43"
+};
+
+// 2つ目のFirebaseアプリの初期化
+const firebaseApp2 = firebase.initializeApp(firebaseConfig2, "App2");
+const auth2 = firebaseApp2.auth();
+const db2 = firebaseApp2.firestore();
+const storage2 = firebaseApp2.storage();
+
+// DOM (IDを img- プレフィックスに修正)
+const emailInput2 = document.getElementById("img-email");
+const passwordInput2 = document.getElementById("img-password");
+const displayNameInput2 = document.getElementById("img-displayName");
+const registerBtn2 = document.getElementById("img-registerBtn");
+const loginBtn2 = document.getElementById("img-loginBtn");
+const logoutBtn2 = document.getElementById("img-logoutBtn");
+const authStatus2 = document.getElementById("img-authStatus");
+const fileInput2 = document.getElementById("img-fileInput");
+const selectBtn2 = document.getElementById("img-selectBtn");
+const uploadBtn2 = document.getElementById("img-uploadBtn");
+const gallery2 = document.getElementById("img-gallery");
+const status2 = document.getElementById("img-status");
+const overlay2 = document.getElementById("img-overlay");
+const overlayImg2 = document.getElementById("img-overlayImg");
+
+let selectedFile2 = null;
+
+// ----- 認証 -----
+registerBtn2.addEventListener("click", async () => {
+  const email = emailInput2.value.trim();
+  const pass = passwordInput2.value;
+  const displayName = displayNameInput2.value.trim();
+  if(!email || !pass || !displayName){ alert("全て入力してください"); return; }
+  try{
+    const userCredential = await auth2.createUserWithEmailAndPassword(email, pass);
+    await userCredential.user.updateProfile({displayName:displayName});
+    await userCredential.user.sendEmailVerification();
+    alert("確認メールを送信しました。メール内のリンクで認証してください。");
+  }catch(e){ console.error(e); alert(e.message); }
+});
+
+loginBtn2.addEventListener("click", async ()=>{
+  const email=emailInput2.value.trim();
+  const pass=passwordInput2.value;
+  if(!email||!pass){ alert("メール・パスワードを入力してください"); return; }
+  try{
+    const userCredential = await auth2.signInWithEmailAndPassword(email, pass);
+    if(!userCredential.user.emailVerified){
+      alert("メール認証が完了していません。迷惑メールフォルダも確認してください。");
+      await auth2.signOut();
+      return;
+    }
+    authStatus2.textContent = `ログイン: ${userCredential.user.displayName}`;
+    logoutBtn2.style.display="inline-block";
+    registerBtn2.style.display=loginBtn2.style.display="none";
+  }catch(e){ console.error(e); alert(e.message); }
+});
+
+logoutBtn2.addEventListener("click", async ()=>{
+  await auth2.signOut();
+  authStatus2.textContent="未ログイン";
+  logoutBtn2.style.display="none";
+  registerBtn2.style.display=loginBtn2.style.display="inline-block";
+});
+
+// onAuthStateChanged (2つ目のコード専用)
+auth2.onAuthStateChanged(user => {
+  if (user && user.emailVerified) {
+    authStatus2.textContent = `ログイン: ${user.displayName}`;
+    logoutBtn2.style.display = "inline-block";
+    registerBtn2.style.display = loginBtn2.style.display = "none";
+  } else {
+    authStatus2.textContent = "未ログイン";
+    logoutBtn2.style.display = "none";
+    registerBtn2.style.display = loginBtn2.style.display = "inline-block";
+  }
+});
+
+
+// ----- ファイル選択 -----
+selectBtn2.addEventListener("click", ()=> fileInput2.click());
+fileInput2.addEventListener("change", ()=>{
+  selectedFile2 = fileInput2.files[0] || null;
+  status2.textContent = selectedFile2 ? selectedFile2.name : "";
+});
+
+// ----- 投稿 -----
+uploadBtn2.addEventListener("click", async ()=>{
+  const user = auth2.currentUser;
+  if(!user || !user.emailVerified){ status2.textContent = "メール認証を完了してください"; return; }
+  if(!selectedFile2){ status2.textContent="画像を選択してください"; return; }
+
+  uploadBtn2.disabled=true;
+  status2.textContent="アップロード中...";
+  try{
+    // Storage Reference
+    const ref = storage2.ref("test-images/"+user.uid);
+    await ref.put(selectedFile2);
+    const url = await ref.getDownloadURL();
+    
+    // Firestore Document
+    await db2.collection("test-images").doc(user.uid).set({
+      username:user.displayName,
+      url:url,
+      updatedAt:new Date()
+    });
+    status2.textContent="アップロード完了！";
+    selectedFile2=null; fileInput2.value="";
+  }catch(e){ console.error(e); status2.textContent="アップロード失敗"; }
+  finally{ uploadBtn2.disabled=false; }
+});
+
+// ----- ギャラリー表示 -----
+db2.collection("test-images").onSnapshot(snapshot=>{
+  gallery2.innerHTML="";
+  snapshot.forEach(doc=>{
+    const data = doc.data();
+    const div = document.createElement("div");
+    div.className="card";
+
+    const imgEl = document.createElement("img");
+    imgEl.src=data.url;
+    div.appendChild(imgEl);
+
+    const metaDiv = document.createElement("div");
+    metaDiv.className="meta";
+    metaDiv.textContent=`${data.username}\n${new Date(data.updatedAt.seconds*1000).toLocaleString()}`;
+    div.appendChild(metaDiv);
+
+    imgEl.addEventListener("click", ()=>{ overlayImg2.src=data.url; overlay2.style.display="flex"; });
+
+    gallery2.appendChild(div);
+  });
+});
+
+overlay2.addEventListener("click", ()=>{ overlay2.style.display="none"; overlayImg2.src=""; });
+</script>
+</body>
+</html>
